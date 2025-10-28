@@ -1,0 +1,20 @@
+# rust
+target/
+Cargo.lock
+*.swp
+*.swo
+
+# nix
+result
+result-*
+.direnv/
+
+# editors
+.vscode/
+.idea/
+*.vim
+*~
+
+# os
+.DS_Store
+Thumbs.db

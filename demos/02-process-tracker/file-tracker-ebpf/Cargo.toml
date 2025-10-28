@@ -1,0 +1,17 @@
+[package]
+name = "file-tracker-ebpf"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+file-tracker-common = { path = "../file-tracker-common" }
+
+aya-ebpf = { workspace = true }
+aya-log-ebpf = { workspace = true }
+
+[build-dependencies]
+which = { workspace = true }
+
+[[bin]]
+name = "file-tracker"
+path = "src/main.rs"
