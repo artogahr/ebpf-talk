@@ -2,14 +2,14 @@
 title: eBPF, Aya and Network Programming using Rust
 author: Arto Gahr
 theme: 
-    name: terminal-dark
+    name: terminal-light
 ---
 
 <!-- end_slide -->
 
 # eBPF, Aya and Network Programming using Rust
 
-**Or: How I learned to stop worrying and love the kernel** 🚀
+**Or: How I learned to stop worrying and like the kernel**
 
 Artoghrul Gahramanli (Arto)
 
@@ -21,11 +21,9 @@ Master's Thesis @ CZU Prague
 
 **Arto Gahr** - Systems programming enthusiast
 
-📚 **Thesis:** "Lockne: Dynamic Per-Application VPN Tunneling with eBPF and Rust"
+Thesis: "Lockne: Dynamic Per-Application VPN Tunneling with eBPF and Rust"
 
 **The problem:** Route Firefox through VPN, but keep games on direct connection
-
-*(Yes, I'm voluntarily debugging kernel code. No, therapy isn't helping.)*
 
 <!-- end_slide -->
 
@@ -33,13 +31,12 @@ Master's Thesis @ CZU Prague
 
 **e**xtended **B**erkeley **P**acket **F**ilter
 
-*"It's like JavaScript for the Linux kernel!"* - Someone, probably
+In short: small, verified programs that run safely inside the Linux kernel.
 
-**Really though:**
-- Run **sandboxed programs** in the **kernel**
+- Run sandboxed programs in the kernel
 - Without writing kernel modules
 - Without rebooting
-- Without (usually) crashing everything 💥
+- With a verifier checking safety before load
 
 <!-- end_slide -->
 
@@ -48,11 +45,10 @@ Master's Thesis @ CZU Prague
 **Old Way:** Kernel Module
 
 ```c
-// 1. Write module for exact kernel version
+// 1. Write out-of-tree module for a specific kernel version
 // 2. insmod your_module.ko
-// 3. Kernel panic
-// 4. Reboot server
-// 5. Get fired
+// 3. Risk kernel panic or version mismatch
+// 4. Reboot and repeat
 ```
 
 **eBPF Way:**
@@ -60,52 +56,46 @@ Master's Thesis @ CZU Prague
 ```rust
 // 1. Write once
 // 2. bpf(BPF_PROG_LOAD, ...)
-// 3. It works! (or verifier says no)
-// 4. Keep your job
+// 3. Either runs, or the verifier rejects it
+// 4. Iterate quickly without reboots
 ```
-
-*\*Famous last words: "The verifier will catch any bugs!"*
 
 <!-- end_slide -->
 
-# Why eBPF is Cool
+# Why eBPF is Useful
 
-**🚀 Speed**
+**Speed**
 - Runs in kernel space
-- **~60ns overhead per packet** (measured in my thesis!)
+- ~60ns overhead per packet (measured in my thesis)
 - JIT compiled to native code
 
-**🔒 Safety**
+**Safety**
 - Verified before loading
 - Bounded loops only
-- Can't crash kernel*
+- Designed to reduce kernel crashes
 
-**🎯 Flexibility**
+**Flexibility**
 - Load/unload dynamically
 - No reboot needed
 - Real-time updates
-
-*\*The verifier is very strict. Like, VERY strict.*
 
 <!-- end_slide -->
 
 # eBPF Program Types
 
-**XDP** - eXpress Data Path (fastest, at driver level)
-**TC** - Traffic Control (my thesis uses this!)
-**Kprobes** - Trace kernel functions
-**Uprobes** - Trace userspace functions  
-**Cgroup programs** - Per-process hooks (also in my thesis!)
-**Tracepoints** - Stable kernel events
-
-*It's like Pokémon but for observability* 🎮
+- **XDP** - eXpress Data Path (fastest, at driver level)
+- **TC** - Traffic Control (my thesis uses this)
+- **Kprobes** - Trace kernel functions
+- **Uprobes** - Trace userspace functions  
+- **Cgroup programs** - Per-process hooks (also in my thesis)
+- **Tracepoints** - Stable kernel events
 
 <!-- end_slide -->
 
 # Real-World eBPF
 
 **Networking**
-- Cilium (Kubernetes CNI - used everywhere)
+- Cilium (Kubernetes CNI)
 - Katran (Facebook's L4 load balancer)
 
 **Observability**
@@ -115,8 +105,6 @@ Master's Thesis @ CZU Prague
 **Security**
 - Falco (runtime threat detection)
 - Tetragon (eBPF-based security)
-
-*If it touches the kernel, someone made an eBPF tool for it*
 
 <!-- end_slide -->
 
@@ -151,20 +139,22 @@ struct {
 static SOCKET_MAP: HashMap<u64, u32> = 
     HashMap::with_max_entries(10240, 0);
 
-// Type-safe!
-// Compiler catches errors
-// Much better DX
+// Type-safe
+// Compiler catches many errors
+// Nicer developer experience
 ```
 
 **Benefits:**
-✅ Memory safety ✅ Modern tooling
-✅ Same performance ✅ Better errors
+- Memory safety
+- Modern tooling
+- Comparable performance
+- Better error messages
 
 <!-- end_slide -->
 
-# Meet Aya 🎯
+# Meet Aya
 
-**Pure Rust eBPF library** (no LLVM/Clang needed*)
+**Pure Rust eBPF library** (no LLVM/Clang required for user space)
 
 ```rust
 use aya::{Ebpf, programs::*};
@@ -178,10 +168,10 @@ let prog: &mut SchedClassifier =
 prog.load()?;
 prog.attach("eth0", TcAttachType::Egress)?;
 
-// That's it! Running in kernel now!
+// Program is now attached
 ```
 
-*\*You still need bpf-linker, but it's just `cargo install`*
+Note: you still need `bpf-linker` (installable via `cargo install`).
 
 <!-- end_slide -->
 
@@ -195,7 +185,7 @@ prog.attach("eth0", TcAttachType::Egress)?;
 
 **User Space** (`aya` crate)
 - Normal Rust with std
-- Loads & manages programs
+- Loads and manages programs
 - Reads/writes eBPF maps
 - Handles logging
 
@@ -207,16 +197,16 @@ prog.attach("eth0", TcAttachType::Egress)?;
 
 # eBPF Program Types - Real Examples
 
-**Different hooks for different jobs:**
+Different hooks for different jobs:
 
 **TC Classifier** (like today's demo)
 ```rust
 #[classifier]  // Packet processing
 ```
 
-**XDP** (even faster!)
+**XDP** (faster)
 ```rust
-#[xdp]  // At driver level, for DDoS protection
+#[xdp]  // At driver level, e.g., for DDoS mitigation
 ```
 
 **Tracepoint** (system observability)
@@ -226,10 +216,10 @@ prog.attach("eth0", TcAttachType::Egress)?;
 
 **Cgroup** (per-process hooks)
 ```rust  
-#[cgroup_sock_addr]  // My thesis uses this!
+#[cgroup_sock_addr]  // Used in my thesis
 ```
 
-**My lockne uses TWO types: TC + Cgroup working together!**
+Lockne uses two types: TC + Cgroup working together.
 
 <!-- end_slide -->
 
@@ -239,7 +229,7 @@ prog.attach("eth0", TcAttachType::Egress)?;
 
 **Traditional VPN:** All-or-nothing
 - Enable VPN → Everything goes through tunnel
-- Slow games, high latency, can't access local network
+- Slower games, higher latency, no local network
 
 **What I wanted:**
 - Firefox → VPN (privacy)
@@ -270,7 +260,7 @@ Extract socket cookie from packet
 Look up PID in map → Found it!
 ```
 
-**Two programs working together!**
+Two programs working together.
 
 <!-- end_slide -->
 
@@ -278,7 +268,7 @@ Look up PID in map → Found it!
 
 **Problem:** Packets don't have PID info
 
-**Solution:** Socket cookies!
+**Solution:** Socket cookies
 
 ```rust
 // In cgroup program (when socket created):
@@ -289,11 +279,11 @@ SOCKET_MAP.insert(&cookie, &pid, 0)?;
 // In TC program (when packet sent):
 let cookie = bpf_get_socket_cookie(ctx.skb.skb);
 if let Some(pid) = SOCKET_MAP.get(&cookie) {
-    // We know which process sent this!
+    // We know which process sent this
 }
 ```
 
-**Key insight:** Socket cookies are stable identifiers
+Key point: Socket cookies are stable identifiers.
 
 <!-- end_slide -->
 
@@ -327,73 +317,49 @@ static SOCKET_MAP: HashMap<u64, u32> =
 
 // Accessing the map:
 if let Some(pid) = unsafe { SOCKET_MAP.get(&cookie) } {
-    // pid is &u32, can't mess up
+    // pid is &u32
     info!(&ctx, "pid={}", *pid);
 }
-// Compiler enforces safety
+// Compiler enforces types and many safety invariants
 ```
-
-**`unsafe` is explicit, types are checked!**
 
 <!-- end_slide -->
 
 # Real Challenges I Hit
 
-**1. Testing with `ping` didn't work**
+1) Testing with `ping` didn't work
 - ICMP doesn't call `connect()`
 - Cgroup hook never fired
-- Switched to `curl` (TCP) ✅
+- Switched to `curl` (TCP)
 
-**2. Pre-existing connections show "unknown"**
-- Can only track NEW connections
+2) Pre-existing connections show "unknown"
+- Can only track new connections
 - Solution: Launch apps through lockne
 - `sudo lockne run firefox`
 
-**3. The verifier hates me**
-- "Cannot prove bounded execution"
-- "Invalid memory access"
-- Learned to think like the verifier 🤖
+3) Verifier constraints
+- Bounded loops required
+- Strict memory access rules
+- Learned to structure code for the verifier
 
 <!-- end_slide -->
 
 # What Actually Works
 
-**✅ Process tracking via socket cookies**
-- Reliably maps packets → PIDs
-
-**✅ Two-program architecture**
-- TC classifier + cgroup tracker
-
-**✅ Process launcher mode**
-- `lockne run <program>` just works
-
-**✅ Performance**
-- ~60ns per packet overhead
-- <1% CPU usage
-- 200KB memory
-
-**✅ TUI with ratatui**
-- Live stats, process counts
+- Process tracking via socket cookies reliably maps packets → PIDs
+- Two-program architecture: TC classifier + cgroup tracker
+- Process launcher mode: `lockne run <program>`
+- Performance: ~60ns per packet, <1% CPU, ~200KB memory
+- TUI with ratatui for live stats
 
 <!-- end_slide -->
 
 # What's Still TODO
 
-**❌ Actual packet redirection**
-- Currently just tracking
-- Need `bpf_redirect()` to WireGuard interface
-
-**❌ IPv6 support**
-- Only IPv4 right now
-
-**❌ Map cleanup**
-- Entries never removed
-- Need to track socket close
-
-**❌ Process hierarchy**
-- Child processes not tracked
-
-*These are clearly defined next steps!*
+- Actual packet redirection (use `bpf_redirect()` to WireGuard interface)
+- IPv6 support
+- Map cleanup (remove entries on socket close)
+- Process hierarchy (track child processes)
 
 <!-- end_slide -->
 
@@ -432,68 +398,65 @@ pub fn tc_classifier(ctx: TcContext) -> i32 {
 }
 
 fn try_classify(ctx: TcContext) -> Result<i32, ()> {
-    let eth: EthHdr = ctx.load(0)?; // Bounds checked!
-    let ip: Ipv4Hdr = ctx.load(ETH_HLEN)?; // Type safe!
+    let eth: EthHdr = ctx.load(0)?; // Bounds checked
+    let ip: Ipv4Hdr = ctx.load(ETH_HLEN)?; // Type safe
     // ...
 }
 ```
 
-**The verifier still checks everything, but Rust helps you write correct code!**
+The verifier still checks everything, but Rust helps you write correct code.
 
 <!-- end_slide -->
 
-# Demo Time! 🎬
+# Demo Time
 
 **Simple packet monitor** (official Aya template)
 
 What you'll see:
 - eBPF program attaching to interface
 - Logs for every packet
-- All in Rust!
-- Exits after N seconds (not hanging!)
+- All in Rust
+- Exits after N seconds
 
 ```bash
 sudo ./target/debug/demo --iface lo --duration 10
 ```
 
-*What could possibly go wrong?* 😅
-
 <!-- end_slide -->
 
 # Lessons Learned
 
-**1. Start with Aya template**
+1) Start with Aya template
 - Don't build from scratch
-- `cargo generate` saves weeks
+- `cargo generate` saves time
 
-**2. Test incrementally**
+2) Test incrementally
 - Add one feature at a time
-- eBPF debugging is HARD
+- eBPF debugging is hard
 
-**3. Read the verifier errors**
-- They're cryptic but correct
+3) Read the verifier errors
 - "Cannot prove bounded" = you need a loop limit
 
-**4. C experience helps**
+4) C experience helps
 - Understanding packet structures
 - Knowing kernel concepts
 
-**5. Rust makes it better**
+5) Rust helps
 - Catches bugs at compile time
-- Better refactoring
+- Easier refactoring
 
 <!-- end_slide -->
 
 # Performance: eBPF vs Userspace
 
-**My measurements (from thesis):**
+My measurements (from thesis):
 
 |Approach|Per-Packet|CPU|Memory|
 |--------|----------|---|------|
 |**Lockne (eBPF)**|~60ns|<1%|200KB|
 |Userspace Proxy|~10-50µs|5-10%|10-50MB|
 
-**eBPF is 100-1000x faster!**
+eBPF is roughly 100–1000× faster in this scenario.
 
 Why?
 - No context switching
@@ -502,58 +465,78 @@ Why?
 
 <!-- end_slide -->
 
-# Resources 📚
+# Resources
 
 **eBPF**
-- [ebpf.io](https://ebpf.io) - Start here!
-- [ebpf.io/what-is-ebpf](https://ebpf.io/what-is-ebpf) - Great intro
+- [ebpf.io](https://ebpf.io)
+- [What is eBPF](https://ebpf.io/what-is-ebpf)
 
 **Aya**
-- [aya-rs.dev](https://aya-rs.dev) - Official docs
-- [github.com/aya-rs/aya](https://github.com/aya-rs/aya) - Source
-- [github.com/aya-rs/aya-template](https://github.com/aya-rs/aya-template) - Start here!
+- [aya-rs.dev](https://aya-rs.dev) — Official docs
+- [github.com/aya-rs/aya](https://github.com/aya-rs/aya) — Source
+- [github.com/aya-rs/aya-template](https://github.com/aya-rs/aya-template) — Starter template
 
 **My Project**
-- Ask me about lockne!
-- Code is on my machine (maybe GitHub soon?)
+- Ask me about lockne
+- Code is on my machine (maybe GitHub soon)
 
 <!-- end_slide -->
 
-# Questions? 💬
-
-*"I don't know the answer, but the verifier probably does!"* 😅
+# Questions?
 
 Happy to chat about:
 - eBPF quirks and footguns
 - Rust for systems programming
-- My thesis struggles
-- Why socket cookies are amazing
-- How the verifier ruined my weekend
+- Thesis implementation details
+- Why socket cookies are useful
+- Verifier-friendly coding patterns
 
-**Thank you!** 🎉
+**Thank you!**
 
 <!-- end_slide -->
 
-# Backup: Technical Details
-
-**Socket Cookie Extraction:**
-
 ```rust
-// Different contexts need different pointers!
+fn try_ping_monitor(ctx: TcContext) -> Result<i32, i32> {
+    let ethertype: u16 = unsafe { ptr_at(&ctx, 12)? };
+    if ethertype != 0x0008 {  // IPv4
+        return Ok(TC_ACT_PIPE);
+    }
 
-// In cgroup/sock_addr:
-let cookie = bpf_get_socket_cookie(ctx.sock_addr as *mut _);
+    let protocol: u8 = unsafe { ptr_at(&ctx, 23)? };
+    if protocol != 1 {  // ICMP
+        return Ok(TC_ACT_PIPE);
+    }
 
-// In TC classifier:
-let cookie = bpf_get_socket_cookie(ctx.skb.skb as *mut _);
+    let icmp_type: u8 = unsafe { ptr_at(&ctx, 34)? };
+    
+    if icmp_type == 8 {  // Echo Request
+        info!(&ctx, "🔔 Someone is pinging us!");
+    }
 
-// Took me hours to figure this out...
+    Ok(TC_ACT_PIPE)
+}
 ```
 
-**PID extraction:**
-
 ```rust
-let pid_tgid = bpf_get_current_pid_tgid();
-let pid = (pid_tgid >> 32) as u32;  // Upper 32 bits = TGID
-let tid = (pid_tgid & 0xFFFFFFFF) as u32;  // Lower 32 = TID
+#[inline(always)]
+unsafe fn ptr_at<T: Copy>(ctx: &TcContext, offset: usize) -> Result<T, i32> {
+    let start = ctx.data();
+    let end = ctx.data_end();
+    let len = core::mem::size_of::<T>();
+    
+    if start + offset + len > end {
+        return Err(TC_ACT_PIPE);
+    }
+    
+    Ok(*((start + offset) as *const T))
+}
+```
+
+<!-- end_slide -->
+```rust
+let src_ip: u32 = unsafe { ptr_at(&ctx, 26)? };
+if src_ip == u32::from_be_bytes([10, 0, 0, 2]) {
+    info!(&ctx, "🚫 Blocking packet from 10.0.0.2");
+    return Ok(TC_ACT_SHOT);  // Drop the packet
+}
 ```
